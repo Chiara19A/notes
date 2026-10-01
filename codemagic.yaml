@@ -1,0 +1,36 @@
+workflows:
+  expo-ios-ipa:
+    name: Compila Notes IPA per iPad
+    max_build_duration: 30
+    instance_type: mac_mini_m1
+    environment:
+      node: 20.x
+      xcode: 16.0
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install
+          npm install -g eas-cli expo-cli
+      - name: Prebuild iOS Project
+        script: |
+          npx expo prebuild --platform ios
+      - name: Build Unsigned IPA
+        script: |
+          xcodebuild build \
+            -workspace ios/*.xcworkspace \
+            -scheme $(ls ios | grep .xcodeproj | sed 's/.xcodeproj//') \
+            -sdk iphoneos \
+            -configuration Release \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+      - name: Package Payload to IPA
+        script: |
+          mkdir -p build/Payload
+          APP_DIR=$(find build/DerivedData -name "*.app" -type d | head -1)
+          cp -R "$APP_DIR" build/Payload/
+          cd build
+          zip -r "../Notes.ipa" Payload
+    artifacts:
+      - "*.ipa"
